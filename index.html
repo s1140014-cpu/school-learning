@@ -222,7 +222,7 @@ document.querySelector('#registerBtn').onclick = async () => {
   const { data, error } = await supabase.auth.signUp({
     email, password,
     options: { data: { display_name: displayName },
-      emailRedirectTo: window.location.origin + window.location.pathname }
+      emailRedirectTo: 'https://s1140014-cpu.github.io/school-learning/' }
   });
   if (error) return msg('註冊失敗：' + error.message);
   if (data.session && data.user) {
