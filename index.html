@@ -295,5 +295,43 @@ document.querySelector('#resendVerificationBtn').onclick = async () => {
     ? '寄送失敗：' + error.message
     : '已提出寄送請求，請檢查收件匣及垃圾郵件。';
 };
-</script></body>
+</script>
+<script>
+(function () {
+  const btn = document.getElementById('logoutBtn');
+
+  if (!btn || btn.dataset.logoutBound === 'true') return;
+  btn.dataset.logoutBound = 'true';
+
+  btn.addEventListener('click', async function () {
+    btn.disabled = true;
+
+    try {
+      const supabase = window.studySupabase;
+
+      if (!supabase) {
+        alert('Supabase 尚未初始化，請重新整理頁面後再試。');
+        return;
+      }
+
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        alert('登出失敗：' + error.message);
+        return;
+      }
+
+      sessionStorage.removeItem('studyChallenge_session');
+      location.reload();
+    } catch (e) {
+      alert('登出發生錯誤：' + e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
+</body>
 </html>
