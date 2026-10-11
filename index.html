@@ -331,6 +331,188 @@ document.querySelector('#resendVerificationBtn').onclick = async () => {
   });
 })();
 </script>
+
+<section id="cloudQuestionBank" style="max-width:900px;margin:24px auto;padding:20px;background:#fff;border:1px solid #ddd;border-radius:14px;color:#222;">
+  <h2>📚 雲端題庫</h2>
+  <p>選擇科目，載入 Supabase 已發布的題目。</p>
+
+  <label for="qbSubject">科目：</label>
+  <select id="qbSubject">
+    <option>國文</option>
+    <option>英文</option>
+    <option selected>數學</option>
+    <option>自然</option>
+    <option>社會</option>
+    <option>資訊</option>
+    <option>其他</option>
+  </select>
+
+  <button id="qbLoad" type="button">載入題目</button>
+  <p id="qbMessage" role="status">準備就緒。</p>
+  <div id="qbQuestions"></div>
+
+  <div style="display:flex;gap:12px;align-items:center;margin-top:16px;">
+    <button id="qbPrev" type="button" disabled>上一頁</button>
+    <span id="qbPage">第 1 頁</span>
+    <button id="qbNext" type="button" disabled>下一頁</button>
+  </div>
+</section>
+
+<script type="module">
+(() => {
+  const client = window.studySupabase;
+  const subjectSelect = document.getElementById('qbSubject');
+  const loadButton = document.getElementById('qbLoad');
+  const prevButton = document.getElementById('qbPrev');
+  const nextButton = document.getElementById('qbNext');
+  const message = document.getElementById('qbMessage');
+  const list = document.getElementById('qbQuestions');
+  const pageLabel = document.getElementById('qbPage');
+
+  if (!subjectSelect || !loadButton || !list) return;
+
+  const pageSize = 20;
+  let page = 0;
+  let total = 0;
+  let busy = false;
+
+  function updateControls() {
+    pageLabel.textContent = `第 ${page + 1} 頁`;
+    prevButton.disabled = busy || page === 0;
+    nextButton.disabled = busy || (page + 1) * pageSize >= total;
+    loadButton.disabled = busy;
+  }
+
+  function addText(parent, tag, text, style) {
+    const el = document.createElement(tag);
+    el.textContent = text;
+    if (style) el.style.cssText = style;
+    parent.appendChild(el);
+    return el;
+  }
+
+  async function loadQuestions() {
+    if (busy) return;
+
+    const client = window.studySupabase;
+    if (!client) {
+      message.textContent = 'Supabase 尚未初始化，請重新整理網站後再試。';
+      return;
+    }
+
+    busy = true;
+    updateControls();
+    message.textContent = '正在載入題目……';
+    list.replaceChildren();
+
+    try {
+      const start = page * pageSize;
+      const end = start + pageSize - 1;
+
+      const { data, error, count } = await client
+        .from('questions')
+        .select(
+          'id, subject, grade, unit, difficulty, question_type, question_text, options',
+          { count: 'exact' }
+        )
+        .eq('status', 'published')
+        .eq('subject', subjectSelect.value)
+        .order('id', { ascending: true })
+        .range(start, end);
+
+      if (error) throw error;
+
+      total = count ?? 0;
+
+      if (!data || data.length === 0) {
+        message.textContent = '這個科目目前沒有已發布的題目。';
+        return;
+      }
+
+      data.forEach((q, index) => {
+        const card = document.createElement('article');
+        card.style.cssText =
+          'margin:14px 0;padding:16px;border:1px solid #ddd;border-radius:10px;';
+
+        addText(
+          card,
+          'h3',
+          `第 ${start + index + 1} 題｜${q.subject}`,
+          'font-size:17px;margin-top:0;'
+        );
+
+        addText(card, 'p', q.question_text);
+
+        if (q.grade || q.unit) {
+          addText(
+            card,
+            'p',
+            [q.grade, q.unit].filter(Boolean).join(' · '),
+            'color:#666;font-size:13px;'
+          );
+        }
+
+        const options = Array.isArray(q.options) ? q.options : [];
+
+        if (options.length) {
+          const ul = document.createElement('ul');
+
+          options.forEach(option => {
+            const li = document.createElement('li');
+
+            if (option && typeof option === 'object') {
+              li.textContent = `${option.key ?? ''} ${option.text ?? ''}`;
+            } else {
+              li.textContent = String(option);
+            }
+
+            ul.appendChild(li);
+          });
+
+          card.appendChild(ul);
+        }
+
+        list.appendChild(card);
+      });
+
+      message.textContent = `共找到 ${total} 題，目前顯示 ${start + 1}–${Math.min(start + data.length, total)} 題。`;
+    } catch (error) {
+      console.error('雲端題庫載入失敗：', error);
+      message.textContent =
+        '載入失敗：' + (error.message || '請確認登入狀態、RLS 政策及資料表設定。');
+    } finally {
+      busy = false;
+      updateControls();
+    }
+  }
+
+  loadButton.addEventListener('click', () => {
+    page = 0;
+    loadQuestions();
+  });
+
+  subjectSelect.addEventListener('change', () => {
+    page = 0;
+    loadQuestions();
+  });
+
+  prevButton.addEventListener('click', () => {
+    if (page > 0 && !busy) {
+      page--;
+      loadQuestions();
+    }
+  });
+
+  nextButton.addEventListener('click', () => {
+    if ((page + 1) * pageSize < total && !busy) {
+      page++;
+      loadQuestions();
+    }
+  });
+
+  loadQuestions();
+})();
+</script>
 </body>
 </html>
 </body>
