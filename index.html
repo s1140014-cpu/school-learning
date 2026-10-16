@@ -335,6 +335,23 @@ document.querySelector('#resendVerificationBtn').onclick = async () => {
 <section id="cloudQuestionBank" style="max-width:900px;margin:24px auto;padding:20px;background:#fff;border:1px solid #ddd;border-radius:14px;color:#222;">
   <h2>📚 雲端題庫</h2>
   <p>選擇科目，載入 Supabase 已發布的題目。</p>
+  
+<label for="quizStage">學習階段：</label>
+<select id="quizStage">
+  <option value="國小" selected>國小</option>
+  <option value="國中">國中</option>
+  <option value="高中">高中</option>
+</select>
+
+<label for="quizGrade">年級：</label>
+<select id="quizGrade">
+  <option value="國小一年級">一年級</option>
+  <option value="國小二年級">二年級</option>
+  <option value="國小三年級" selected>三年級</option>
+  <option value="國小四年級">四年級</option>
+  <option value="國小五年級">五年級</option>
+  <option value="國小六年級">六年級</option>
+</select>
 
   <label for="qbSubject">科目：</label>
   <select id="qbSubject">
