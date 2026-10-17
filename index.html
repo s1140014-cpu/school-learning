@@ -332,26 +332,54 @@ document.querySelector('#resendVerificationBtn').onclick = async () => {
 })();
 </script>
 
-<section id="cloudQuestionBank" style="max-width:900px;margin:24px auto;padding:20px;background:#fff;border:1px solid #ddd;border-radius:14px;color:#222;">
-  <h2>📚 雲端題庫</h2>
-  <p>選擇科目，載入 Supabase 已發布的題目。</p>
-  
-<label for="quizStage">學習階段：</label>
-<select id="quizStage">
-  <option value="國小" selected>國小</option>
-  <option value="國中">國中</option>
-  <option value="高中">高中</option>
-</select>
 
-<label for="quizGrade">年級：</label>
-<select id="quizGrade">
-  <option value="國小一年級">一年級</option>
-  <option value="國小二年級">二年級</option>
-  <option value="國小三年級" selected>三年級</option>
-  <option value="國小四年級">四年級</option>
-  <option value="國小五年級">五年級</option>
-  <option value="國小六年級">六年級</option>
-</select>
+<section id="studentQuiz" style="max-width:850px;margin:24px auto;padding:20px;background:#fff;border:1px solid #dbe3f0;border-radius:16px;color:#172033;font-family:Arial,sans-serif">
+  <h2>📝 學生線上測驗</h2>
+  <p>選擇學習階段、年級、科目及題數，從 Supabase 載入已發布的題目。</p>
+
+  <label for="studentQuizStage">學習階段：</label>
+  <select id="studentQuizStage">
+    <option value="國小" selected>國小</option>
+    <option value="國中">國中</option>
+    <option value="高中">高中</option>
+  </select>
+
+  <label for="studentQuizGrade">年級：</label>
+  <select id="studentQuizGrade">
+    <option value="國小一年級">一年級</option>
+    <option value="國小二年級">二年級</option>
+    <option value="國小三年級" selected>三年級</option>
+    <option value="國小四年級">四年級</option>
+    <option value="國小五年級">五年級</option>
+    <option value="國小六年級">六年級</option>
+  </select>
+
+  <label for="quizSubject">測驗科目：</label>
+  <select id="quizSubject">
+    <option>國文</option>
+    <option>英文</option>
+    <option>數學</option>
+    <option>自然</option>
+    <option>社會</option>
+    <option>資訊</option>
+    <option>其他</option>
+  </select>
+
+  <label for="quizCount">題數：</label>
+  <select id="quizCount">
+    <option value="5">5 題</option>
+    <option value="10" selected>10 題</option>
+    <option value="20">20 題</option>
+  </select>
+
+  <button id="quizStart" type="button" style="padding:10px 16px;background:#315efb;color:white;border:0;border-radius:8px;cursor:pointer">開始測驗</button>
+
+  <p id="quizMessage" role="status" aria-live="polite"></p>
+  <div id="quizQuestions"></div>
+  <button id="quizSubmit" type="button" hidden style="padding:11px 18px;background:#16804a;color:white;border:0;border-radius:8px;cursor:pointer">提交答案</button>
+  <div id="quizResult" role="status" aria-live="polite" style="margin-top:18px"></div>
+</section>
+
 
   <label for="qbSubject">科目：</label>
   <select id="qbSubject">
@@ -568,6 +596,26 @@ document.querySelector('#resendVerificationBtn').onclick = async () => {
   root.dataset.initialized = '1';
 
   const $ = id => document.getElementById(id);
+ const stageSelect = $('studentQuizStage');
+const gradeSelect = $('studentQuizGrade');
+
+const gradeOptions = {
+  國小: ['國小一年級', '國小二年級', '國小三年級', '國小四年級', '國小五年級', '國小六年級'],
+  國中: ['國中七年級', '國中八年級', '國中九年級'],
+  高中: ['高中一年級', '高中二年級', '高中三年級']
+};
+
+stageSelect.addEventListener('change', () => {
+  const grades = gradeOptions[stageSelect.value] || [];
+  gradeSelect.replaceChildren();
+
+  grades.forEach((grade, index) => {
+    const option = document.createElement('option');
+    option.value = grade;
+    option.textContent = grade.replace(stageSelect.value, '');
+    gradeSelect.appendChild(option);
+  });
+});
   const message = $('quizMessage');
   const questionsBox = $('quizQuestions');
   const resultBox = $('quizResult');
@@ -693,24 +741,30 @@ document.querySelector('#resendVerificationBtn').onclick = async () => {
         throw new Error('請先登入學生帳號，再開始測驗。');
       }
 
-      const subject = $('quizSubject').value;
-      const limit = Number($('quizCount').value);
 
-      say('正在從雲端題庫載入題目……');
+const stage = $('studentQuizStage').value;
+const grade = $('studentQuizGrade').value;
+const subject = $('quizSubject').value;
+const limit = Number($('quizCount').value);
 
-      const { data, error } = await client.rpc('start_quiz', {
-        p_subject: subject,
-        p_limit: limit
-      });
+say('正在從雲端題庫載入題目……');
 
-      if (error) throw error;
+const { data, error } = await client.rpc('start_quiz_by_grade', {
+  p_stage: stage,
+  p_grade: grade,
+  p_subject: subject,
+  p_limit: limit
+});
 
-      activeAttempt = data.attempt_id;
-      activeQuestions = data.questions || [];
+if (error) throw error;
 
-      if (!activeQuestions.length) {
-        throw new Error('目前沒有可作答的題目。');
-      }
+activeAttempt = data.attempt_id;
+activeQuestions = data.questions || [];
+
+if (!activeQuestions.length) {
+  throw new Error('目前沒有符合所選年級與科目的已發布題目。');
+}
+
 
       renderQuestions();
       say(`已載入 ${activeQuestions.length} 題，請完成作答後提交。`);
