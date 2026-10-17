@@ -836,5 +836,114 @@ if (!activeQuestions.length) {
   });
 })();
 </script>
+ 
+<section id="quizHistory" class="card">
+  <h2>📚 我的測驗歷史紀錄</h2>
+  <button id="loadQuizHistory" type="button">
+    載入測驗紀錄
+  </button>
+  <p id="quizHistoryMessage" role="status"></p>
+
+  <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th>交卷時間</th>
+          <th>科目</th>
+          <th>答對題數</th>
+          <th>總題數</th>
+          <th>得分</th>
+        </tr>
+      </thead>
+      <tbody id="quizHistoryRows">
+        <tr>
+          <td colspan="5">按「載入測驗紀錄」查看紀錄。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+window.addEventListener('load', () => {
+  const client = window.studySupabase;
+  const button = document.getElementById('loadQuizHistory');
+  const message = document.getElementById('quizHistoryMessage');
+  const rows = document.getElementById('quizHistoryRows');
+
+  if (!client || !button || !message || !rows) {
+    console.warn('測驗歷史紀錄區或 Supabase 尚未準備好。');
+    return;
+  }
+
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    message.textContent = '正在載入……';
+
+    try {
+      const { data: sessionData, error: sessionError } =
+        await client.auth.getSession();
+
+      if (sessionError) throw sessionError;
+
+      if (!sessionData.session) {
+        message.textContent = '請先登入學生帳號。';
+        return;
+      }
+
+      const { data, error } = await client.rpc(
+        'get_my_quiz_history',
+        { p_limit: 20 }
+      );
+
+      if (error) throw error;
+
+      rows.replaceChildren();
+
+      if (!data || data.length === 0) {
+        message.textContent = '目前沒有已提交的測驗紀錄。';
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.textContent = '尚無紀錄';
+        tr.appendChild(td);
+        rows.appendChild(tr);
+        return;
+      }
+
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        const values = [
+          item.submitted_at
+            ? new Date(item.submitted_at).toLocaleString('zh-TW')
+            : '—',
+          item.subject ?? '—',
+          item.correct_count ?? 0,
+          item.total_questions ?? 0,
+          item.score == null ? '—' : Number(item.score).toFixed(2)
+        ];
+
+        values.forEach(value => {
+          const td = document.createElement('td');
+          td.textContent = String(value);
+          tr.appendChild(td);
+        });
+
+        rows.appendChild(tr);
+      });
+
+      message.textContent = `已載入 ${data.length} 筆紀錄。`;
+    } catch (error) {
+      console.error(error);
+      message.textContent = '載入失敗：' + (error.message || '請稍後再試。');
+    } finally {
+      button.disabled = false;
+    }
+  });
+});
+</script>
+</body>
+</html>
+
 </body>
 </html>
